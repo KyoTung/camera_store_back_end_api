@@ -87,8 +87,9 @@ class DashBoardController extends Controller
 
         return response()->json([
             'data' => $data,
-            'message' => 'Lấy top 5 sản phẩm bán chạy nhất thành công',
+            'message' => 'get top 5 sản phẩm bán chạy nhất thành công',
             'status' => 200
         ], 200);
     }
+
 }
