@@ -27,6 +27,11 @@ Route::group(['middleware' => ['auth:sanctum','checkRoleAdmin']],function (){
     Route::delete('/delete-product/{id}', [\App\Http\Controllers\admin\ProductController::class, 'destroy']);
 
     Route::apiResource('/orders', \App\Http\Controllers\admin\OrderController::class);
+    Route::get('/total-products', [\App\Http\Controllers\admin\DashBoardController::class, 'totalProducts']);
+    Route::get('/total-paid-product', [\App\Http\Controllers\admin\DashBoardController::class, 'totalPaidOrders']);
+    Route::get('/total-users', [\App\Http\Controllers\admin\DashBoardController::class, 'totalUser']);
+    Route::get('/total-sale-product', [\App\Http\Controllers\admin\DashBoardController::class, 'totalSaleProduct']);
+    Route::get('/top-sale-product', [\App\Http\Controllers\admin\DashBoardController::class, 'top5SaleProducts']);
 });
 
 //client api
@@ -62,6 +67,3 @@ Route::post('/register',[\App\Http\Controllers\AuthController::class, 'register'
 Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login']);
 
 
-Route::get('/db-test', function() {
-    return DB::connection()->getDatabaseName();
-});
