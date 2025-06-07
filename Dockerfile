@@ -32,4 +32,13 @@ RUN chmod -R 775 storage bootstrap/cache && \
 
 # Port và lệnh khởi động
 EXPOSE 8000
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+
+COPY wait-for-db.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/wait-for-db.sh
+CMD ["sh", "-c", "wait-for-db.sh && php artisan serve --host=0.0.0.0 --port=${PORT}"]
+
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage bootstrap/cache \
+    && php artisan storage:link
