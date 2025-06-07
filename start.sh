@@ -1,16 +1,10 @@
-#!/usr/bin/env bash
-echo "Running composer"
+#!/bin/sh
 
-composer install --no-dev --working-dir=/var/www/html
+# Thiết lập port động cho Apache
+echo "Listen $PORT" > /etc/apache2/ports.conf
 
-echo "Caching config..."
-php artisan config:cache
+# Cập nhật virtual host dùng port động
+sed -i "s/\${PORT:-8080}/$PORT/g" /etc/apache2/sites-available/000-default.conf
 
-echo "Caching routes..."
-php artisan route:cache
-
-echo "Publishing cloudinary provider..."
-php artisan vendor:publish --provider="CloudinaryLabs\CloudinaryLaravel\CloudinaryServiceProvider" --tag="cloudinary-laravel-config"
-
-echo "Running migrations..."
-php artisan migrate --force
+# Khởi động Apache
+exec apache2-foreground

@@ -12,40 +12,38 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && docker-php-ext-install zip pdo pdo_mysql opcache
 
-# Cấu hình Apache
-RUN a2enmod rewrite headers \
-    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+# Cấu hình Apache cơ bản
+RUN a2enmod rewrite headers
 
 # Document root
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
     && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Tạo file cấu hình Apache trực tiếp
-RUN echo "Listen \${PORT:-8080}" > /etc/apache2/ports.conf && \
-    echo '<VirtualHost *:${PORT:-8080}>\n\
+# Tạo virtual host mẫu (với placeholder port)
+RUN echo '<VirtualHost *:${PORT:-8080}>\n\
     DocumentRoot /var/www/html/public\n\
     <Directory "/var/www/html/public">\n\
         AllowOverride All\n\
         Require all granted\n\
     </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 COPY --from=build /app /var/www/html
 
 # Tạo .env tạm nếu cần
-RUN if [ ! -f .env ]; then \
-        cp .env.example .env; \
-        php artisan key:generate; \
-    fi
+RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
 # Healthcheck endpoint
 RUN echo "<?php http_response_code(200); echo 'OK'; ?>" > public/health.php
 
-# Đặt lệnh artisan ở CUỐI CÙNG sau khi mọi thứ đã sẵn sàng
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && php artisan storage:link \
-    && php artisan config:cache \
-    && php artisan view:cache
+# Fix permissions
+RUN chown -R www-data:www-data storage bootstrap/cache
 
-CMD ["apache2-foreground"]
+# Copy và cấp quyền cho startup script
+COPY start.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/start.sh
+
+CMD ["/usr/local/bin/start.sh"]
