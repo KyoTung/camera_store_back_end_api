@@ -21,7 +21,7 @@ RUN echo "Listen \${PORT:-8080}" > /etc/apache2/ports.conf
 COPY apache.conf /etc/apache2/sites-available/000-default.conf
 
 COPY --from=build /app /var/www/html
-COPY .env.railway .env  # Nhớ tạo file .env.railway
+COPY .env.railway .env
 
 # Quyền file
 RUN chown -R www-data:www-data storage bootstrap/cache \
