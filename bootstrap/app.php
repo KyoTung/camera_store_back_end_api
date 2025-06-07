@@ -16,7 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'checkRoleAdmin' => \App\Http\Middleware\CheckRoleAdmin::class,
             'checkUser' => \App\Http\Middleware\CheckUser::class
         ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+
+    })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+    })
+    ->create();

@@ -5,10 +5,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 
-//Route::get('/user', function (Request $request) {
-//    return $request->user();
-//})->middleware('auth:sanctum');
-
 //admin api
 Route::group(['middleware' => ['auth:sanctum','checkRoleAdmin']],function (){
     Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
