@@ -20,6 +20,16 @@ COPY public public
 RUN chown -R www-data:www-data /var/www/html/storage \
     && a2enmod rewrite
 
+# ... các bước trước đó ...
+
+# Copy PHP configuration
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
+
+# Cấu hình thêm cho Laravel
+RUN chmod -R 775 storage bootstrap/cache && \
+    php artisan config:cache && \
+    php artisan route:cache
+
 # Port và lệnh khởi động
 EXPOSE 8000
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
