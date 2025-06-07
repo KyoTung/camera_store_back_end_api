@@ -23,5 +23,9 @@ COPY wait-for-db.sh /usr/local/bin/wait-for-db.sh
 RUN chmod +x /usr/local/bin/wait-for-db.sh
 
 EXPOSE 8080
-CMD ["sh", "-c", "php artisan config:cache && php artisan route:cache && php artisan serve --host=0.0.0.0 --port=${PORT}"]
+
+
+COPY wait-for-db.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/wait-for-db.sh
+
 CMD ["sh", "-c", "/usr/local/bin/wait-for-db.sh && php artisan serve --host=0.0.0.0 --port=${PORT}"]
