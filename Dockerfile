@@ -36,6 +36,8 @@ COPY --from=build /app /var/www/html
 # Tạo .env tạm nếu cần
 RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
+RUN php artisan migrate --force || true
+
 # Healthcheck endpoint
 RUN echo "<?php http_response_code(200); echo 'OK'; ?>" > public/health.php
 
@@ -47,4 +49,4 @@ COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
 
 CMD ["/usr/local/bin/start.sh"]
-RUN php artisan migrate --force || true
+
