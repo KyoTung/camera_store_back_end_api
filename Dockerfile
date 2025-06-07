@@ -9,26 +9,26 @@ WORKDIR /var/www/html
 # Cấu hình Apache cho Railway
 RUN docker-php-ext-install pdo pdo_mysql opcache \
     && a2enmod rewrite \
-    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+    && a2enmod headers
 
-# Quan trọng: Cấu hình document root
+# Document root cho Laravel
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Port động cho Railway
+RUN echo "Listen \${PORT:-8080}" > /etc/apache2/ports.conf
+COPY apache.conf /etc/apache2/sites-available/000-default.conf
 
 COPY --from=build /app /var/www/html
-COPY docker/php/php.ini /usr/local/etc/php/conf.d/php.ini
+COPY .env.railway .env  # Nhớ tạo file .env.railway
 
-# Sửa quyền đúng cách (Railway yêu cầu)
-RUN chown -R www-data:www-data /var/www/html/storage \
-    && chown -R www-data:www-data /var/www/html/bootstrap/cache \
-    && php artisan storage:link
+# Quyền file
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && php artisan storage:link \
+    && php artisan optimize:clear
 
-# Cấu hình port động cho Apache
-COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
-RUN echo "Listen ${PORT:-8080}" > /etc/apache2/ports.conf
-
-# Healthcheck endpoint đơn giản
+# Healthcheck endpoint
 RUN echo "<?php http_response_code(200); echo 'OK'; ?>" > public/health.php
 
-CMD ["sh", "-c", "docker-php-entrypoint apache2-foreground"]
+CMD ["apache2-foreground"]
