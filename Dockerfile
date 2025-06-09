@@ -15,6 +15,10 @@ RUN apt-get update && apt-get install -y \
 # Cài Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
+WORKDIR /var/www/html
+COPY . .
+RUN composer install --no-dev --optimize-autoloader
+
 # Copy source vào container
 COPY . /var/www/html
 
