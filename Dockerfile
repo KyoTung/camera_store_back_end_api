@@ -1,8 +1,6 @@
-
-
 FROM php:8.2-apache
 
-# Cài các extension cần thiết cho Laravel (tùy nhu cầu, ví dụ: pdo, gd, zip, ...)
+# Cài các extension cần thiết cho Laravel
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
@@ -16,29 +14,31 @@ RUN apt-get update && apt-get install -y \
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
-COPY . .
-RUN composer install --no-dev --optimize-autoloader
 
-# Copy source vào container
-COPY . /var/www/html
+# Copy source code vào container
+COPY . .
+
+# Cài đặt các package PHP
+RUN composer install --no-dev --optimize-autoloader
 
 # Cấp quyền cho storage & bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Tạo symlink storage:link (nếu cần)
-RUN cd /var/www/html && php artisan storage:link || true
-
-# Copy file apache vhost nếu tùy chỉnh
-# COPY ./docker/vhost.conf /etc/apache2/sites-available/000-default.conf
+RUN php artisan storage:link || true
 
 # Bật rewrite module cho Apache
 RUN a2enmod rewrite
 
+# Sửa DocumentRoot cho Apache về public (Laravel)
+RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf
+
 # Expose port 8080 (Render sử dụng PORT env)
 EXPOSE 8080
+
+# Copy script start.sh vào container (nếu có dùng)
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
 
+# Chạy start.sh làm CMD duy nhất
 CMD ["/usr/local/bin/start.sh"]
-# Start Apache
-CMD ["apache2-foreground"]
