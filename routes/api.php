@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 
-//admin api
+//--------------------------admin api---------------------------
 Route::group(['middleware' => ['auth:sanctum','checkRoleAdmin']],function (){
     Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
     Route::get('/user', function (Request $request) {
@@ -31,26 +31,25 @@ Route::group(['middleware' => ['auth:sanctum','checkRoleAdmin']],function (){
     Route::get('/top-sale-product', [\App\Http\Controllers\admin\DashBoardController::class, 'top5SaleProducts']);
 });
 
-//client api
-Route::group(['middleware' => ['auth:sanctum']],function (){
+//------------------------------client api----------------------
+Route::get('/all-products', [\App\Http\Controllers\client\ProductController::class, 'index']);
+Route::get('/featured-products', [\App\Http\Controllers\client\ProductController::class, 'featuredProduct']);
+Route::get('/product-detail/{id}', [\App\Http\Controllers\client\ProductController::class, 'showDetail']);
+Route::get('/order-confirmation/{id}', [\App\Http\Controllers\client\OrderController::class, 'show']);
+Route::get('/category-product/{id}', [\App\Http\Controllers\client\ProductController::class, 'categoryProduct']);
+Route::get('/brand-product/{id}', [\App\Http\Controllers\client\ProductController::class, 'brandProduct']);
+Route::get('/product-search/', [\App\Http\Controllers\client\ProductController::class, 'searchByName']);
+Route::get('/all-categories', [\App\Http\Controllers\client\ProductController::class, 'categories']);
+Route::get('/all-brands', [\App\Http\Controllers\client\ProductController::class, 'brands']);
+Route::get('/get-category/{id}', [\App\Http\Controllers\client\ProductController::class, 'getCategory']);
+Route::get('/get-brand/{id}', [\App\Http\Controllers\client\ProductController::class, 'getBrand']);
 
-    Route::get('/all-products', [\App\Http\Controllers\client\ProductController::class, 'index']);
-    Route::get('/featured-products', [\App\Http\Controllers\client\ProductController::class, 'featuredProduct']);
-    Route::get('/product-detail/{id}', [\App\Http\Controllers\client\ProductController::class, 'showDetail']);
-    Route::get('/order-confirmation/{id}', [\App\Http\Controllers\client\OrderController::class, 'show']);
-    Route::get('/category-product/{id}', [\App\Http\Controllers\client\ProductController::class, 'categoryProduct']);
-    Route::get('/brand-product/{id}', [\App\Http\Controllers\client\ProductController::class, 'brandProduct']);
-    Route::get('/product-search/', [\App\Http\Controllers\client\ProductController::class, 'searchByName']);
+Route::group(['middleware' => ['auth:sanctum']],function (){
 
     Route::get('/order-history/{id}', [\App\Http\Controllers\client\OrderController::class, 'getOrderHistory' ]);
     Route::put('/cancel-order/{id}', [\App\Http\Controllers\client\OrderController::class, 'cancelOrder']);
     Route::put('/shipped-order/{id}', [\App\Http\Controllers\client\OrderController::class, 'shippedOrder']);
     Route::put('/refunded-order/{id}', [\App\Http\Controllers\client\OrderController::class, 'refundedOrder']);
-
-    Route::get('/all-categories', [\App\Http\Controllers\client\ProductController::class, 'categories']);
-    Route::get('/all-brands', [\App\Http\Controllers\client\ProductController::class, 'brands']);
-    Route::get('/get-category/{id}', [\App\Http\Controllers\client\ProductController::class, 'getCategory']);
-    Route::get('/get-brand/{id}', [\App\Http\Controllers\client\ProductController::class, 'getBrand']);
 
     Route::put('/update-user/{id}', [\App\Http\Controllers\client\UserController::class, 'update']);
     Route::get('/all-discount-code', [\App\Http\Controllers\client\ProductController::class, 'getDiscountCode']);

@@ -7,5 +7,6 @@ echo "Listen $PORT" > /etc/apache2/ports.conf
 sed -i "s/\${PORT:-8080}/$PORT/g" /etc/apache2/sites-available/000-default.conf
 
 php artisan migrate --force || true
+php artisan storage:link
 # Khởi động Apache
 exec apache2-foreground
