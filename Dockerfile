@@ -1,51 +1,40 @@
-FROM composer:2.6 AS build
-WORKDIR /app
-COPY . .
-RUN composer install --no-dev --optimize-autoloader
+
 
 FROM php:8.2-apache
-WORKDIR /var/www/html
 
-# Cài đặt dependencies hệ thống
+# Cài các extension cần thiết cho Laravel (tùy nhu cầu, ví dụ: pdo, gd, zip, ...)
 RUN apt-get update && apt-get install -y \
-    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
     unzip \
-    && docker-php-ext-install zip pdo pdo_mysql opcache
+    git \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Cấu hình Apache cơ bản
-RUN a2enmod rewrite headers
+# Cài Composer
+COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
-# Document root
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
-    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Copy source vào container
+COPY . /var/www/html
 
-# Tạo virtual host mẫu (với placeholder port)
-RUN echo '<VirtualHost *:${PORT:-8080}>\n\
-    DocumentRoot /var/www/html/public\n\
-    <Directory "/var/www/html/public">\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+# Cấp quyền cho storage & bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-COPY --from=build /app /var/www/html
+# Tạo symlink storage:link (nếu cần)
+RUN cd /var/www/html && php artisan storage:link || true
 
-# Tạo .env tạm nếu cần
-RUN if [ ! -f .env ]; then cp .env.example .env; fi
+# Copy file apache vhost nếu tùy chỉnh
+# COPY ./docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 
+# Bật rewrite module cho Apache
+RUN a2enmod rewrite
 
-# Healthcheck endpoint
-RUN echo "<?php http_response_code(200); echo 'OK'; ?>" > public/health.php
-
-# Fix permissions
-RUN chown -R www-data:www-data storage bootstrap/cache
-
-# Copy và cấp quyền cho startup script
+# Expose port 8080 (Render sử dụng PORT env)
+EXPOSE 8080
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
 
 CMD ["/usr/local/bin/start.sh"]
-
+# Start Apache
+CMD ["apache2-foreground"]
