@@ -25,8 +25,10 @@ COPY . .
 # Cài đặt các package PHP
 RUN composer install --no-dev --optimize-autoloader
 
-# Cấp quyền cho storage & bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Đảm bảo các thư mục cần thiết tồn tại và phân quyền đúng
+RUN mkdir -p /var/www/html/public/uploads/temp \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads
 
 # Tạo symlink storage:link (nếu cần)
 RUN php artisan storage:link || true
