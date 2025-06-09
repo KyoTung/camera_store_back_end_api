@@ -1,14 +1,18 @@
 FROM php:8.2-apache
 
-# Cài các extension cần thiết cho Laravel
+# Cài các extension cần thiết cho Laravel + Imagick
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
+    libmagickwand-dev \
+    imagemagick \
     zip \
     unzip \
     git \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick
 
 # Cài Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
@@ -39,18 +43,6 @@ EXPOSE 8080
 # Copy script start.sh vào container (nếu có dùng)
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
-
-RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    git \
-    libmagickwand-dev --no-install-recommends \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd \
-    && pecl install imagick \
-    && docker-php-ext-enable imagick \
 
 # Chạy start.sh làm CMD duy nhất
 CMD ["/usr/local/bin/start.sh"]
