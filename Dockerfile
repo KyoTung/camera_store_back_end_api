@@ -40,5 +40,17 @@ EXPOSE 8080
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
 
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    git \
+    libmagickwand-dev --no-install-recommends \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
+
 # Chạy start.sh làm CMD duy nhất
 CMD ["/usr/local/bin/start.sh"]
