@@ -4,7 +4,7 @@ return [
     'allowed_methods' => ['*'],
     'allowed_origins' => [
         'https://camera-store-frontend-kyotungs-projects.vercel.app',
-        'http://localhost:3000' // Sửa lại có http://
+        'http://localhost:3000'
     ],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
