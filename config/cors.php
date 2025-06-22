@@ -3,7 +3,7 @@ return [
     'paths' => ['api/*', 'sanctum/csrf-cookie', 'upload', 'temp-images'],
     'allowed_methods' => ['*'],
     'allowed_origins' => [
-        'https://camera-store-frontend-kyotungs-projects.vercel.app',
+        'https://camera-store-frontend-nu.vercel.app',
         'http://localhost:3000'
     ],
     'allowed_origins_patterns' => [],
