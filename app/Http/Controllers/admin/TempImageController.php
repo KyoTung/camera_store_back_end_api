@@ -3,16 +3,14 @@
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
 use App\Models\TempImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Imagick\Driver;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class TempImageController extends Controller
 {
-    public  function  store(Request $request)
+    public function store(Request $request)
     {
         $validator = Validator::make($request->all(),[
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg',
@@ -25,31 +23,31 @@ class TempImageController extends Controller
             ], status: 403);
         }
 
+        $uploadedFile = Cloudinary::upload($request->file('image')->getRealPath(), [
+            'folder' => 'temp_images'
+        ]);
+        $url = $uploadedFile->getSecurePath();
+        $publicId = $uploadedFile->getPublicId();
+        $thumbUrl = Cloudinary::getUrl($publicId, [
+            'width'=>600,
+            'height'=>650,
+            'crop'=>'fill'
+        ]);
+
         $tempImage = new TempImage();
-        $tempImage->name = "Image name";
+        $tempImage->name = $url;
+        $tempImage->cloudinary_public_id = $publicId;
         $tempImage->save();
-
-        $image = $request->file('image');
-        $imageName = time().'.'.$image->extension();
-        $image->move(public_path('uploads/temp'),$imageName);
-
-        $tempImage->name = $imageName;
-        $tempImage->save();
-
-
-        //save image thumbnail
-        $manager = new ImageManager(Driver::class);
-        $img = $manager->read(public_path('uploads/temp/'.$imageName));
-        $img->coverDown(600,650);
-        $img->save(public_path('uploads/temp/thumb/'.$imageName));
-
 
         return response()->json([
-            'data'=>$tempImage,
-            'message'=>'Image added successfully',
+            'data'=>[
+                'id' => $tempImage->id,
+                'image_url' => $url,
+                'thumb_url' => $thumbUrl,
+                'cloudinary_public_id' => $publicId
+            ],
+            'message'=>'Image uploaded to Cloudinary successfully',
             'status'=>200,
         ], status: 200);
     }
-
-
 }
