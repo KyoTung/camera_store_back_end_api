@@ -12,5 +12,10 @@ sed -i "s/80>/$PORT>/g" /etc/apache2/sites-available/000-default.conf
 php artisan migrate --force || true
 php artisan storage:link || true
 
+
+
 # Khởi động Apache (foreground)
 exec apache2-foreground
+
+php artisan config:clear
+php artisan config:cache
