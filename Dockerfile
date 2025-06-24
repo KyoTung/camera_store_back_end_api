@@ -22,6 +22,9 @@ WORKDIR /var/www/html
 # Copy source code vào container
 COPY . .
 
+# Cài đặt package Cloudinary cho Laravel
+RUN composer require cloudinary-labs/cloudinary-laravel
+
 # Cài đặt các package PHP
 RUN composer install --no-dev --optimize-autoloader
 
