@@ -56,17 +56,10 @@ RUN composer require cloudinary-labs/cloudinary-laravel --no-interaction && \
 # Thiết lập quyền
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 storage bootstrap/cache public/uploads
-
-# Copy file cấu hình
 COPY vhost.conf /etc/apache2/sites-available/000-default.conf
 RUN a2ensite 000-default
-
-# Copy script khởi động
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
-
 # Expose port
 EXPOSE 8080
-
-# Khởi động
 CMD ["/usr/local/bin/start.sh"]
