@@ -13,18 +13,13 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd \
     && pecl install imagick \
     && docker-php-ext-enable imagick
-
-# Cài Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
-
 # Copy source code vào container
 COPY . .
-
 # Cài đặt package Cloudinary cho Laravel
 RUN composer require cloudinary-labs/cloudinary-laravel
-
 # Cài đặt các package PHP
 RUN composer install --no-dev --optimize-autoloader
 
