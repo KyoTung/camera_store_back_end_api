@@ -5,6 +5,13 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/test-env', function () {
+    return [
+        'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+        'api_key'    => env('CLOUDINARY_API_KEY'),
+        'api_secret' => env('CLOUDINARY_API_SECRET'),
+    ];
+});
 
 //--------------------------admin api---------------------------
 Route::group(['middleware' => ['auth:sanctum','checkRoleAdmin']],function (){

@@ -42,7 +42,10 @@ RUN a2enmod rewrite
 # Sửa DocumentRoot cho Apache về public (Laravel)
 RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf
 
-# Expose port 8080 (Render sử dụng PORT env)
+# Đảm bảo Apache lắng nghe đúng PORT env của Fly.io
+RUN sed -i "s/80/\${PORT}/g" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf
+
+# Expose port 8080
 EXPOSE 8080
 
 # Copy script start.sh vào container (nếu có dùng)

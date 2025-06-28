@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\TempImage;
+use Faker\Core\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Intervention\Image\Drivers\Imagick\Driver;
+use Intervention\Image\ImageManager;
 
 class ProductController extends Controller
 {
@@ -28,6 +30,8 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -61,7 +65,6 @@ class ProductController extends Controller
             ], status: 403);
         }
 
-        // Tạo product
         $product = new Product();
         $product->name = $request->name;
         $product->description = $request->description;
@@ -69,6 +72,7 @@ class ProductController extends Controller
         $product->price = $request->price;
         $product->compare_price = $request->compare_price;
         $product->quantity = $request->quantity;
+        $product->image = $request->image;
         $product->status = $request->status;
         $product->is_featured = $request->is_featured;
         $product->sku = $request->sku;
@@ -86,40 +90,34 @@ class ProductController extends Controller
 
         $product->save();
 
-        // Xử lý gallery (upload từng ảnh lên Cloudinary)
         if(!empty($request->gallery)){
             foreach ($request->gallery as $key => $tempImageId){
                 $tempImage = TempImage::find($tempImageId);
-                if (!$tempImage) continue;
 
-                // Đường dẫn file tạm trên server
-                $localFile = public_path('uploads/temp/'.$tempImage->name);
+                //large thumbnail
+                $extArray = explode('.',$tempImage->name);
+                $ext = end($extArray);
 
-                // Upload lên Cloudinary
-                $uploadedFile = Cloudinary::upload($localFile, [
-                    'folder' => 'products/'.$product->id,
-                    'resource_type' => 'image'
-                ]);
-                $imageUrl = $uploadedFile->getSecurePath();
-                $publicId = $uploadedFile->getPublicId();
+                $imageName = Str::uuid() . '.' . $ext;
+                $manager = new ImageManager(Driver::class);
+                $img = $manager->read(public_path('uploads/temp/'.$tempImage->name));
+                $img->scaleDown(1200);
+                $img->save(public_path('uploads/products/large/'.$imageName));
 
-                // Lưu vào bảng product_images
+                //small thumbnail
+                $manager = new ImageManager(Driver::class);
+                $img = $manager->read(public_path('uploads/temp/'.$tempImage->name));
+                $img->coverDown(500, 650);
+                $img->save(public_path('uploads/products/small/'.$imageName));
+
                 $productImage = new ProductImage();
-                $productImage->image_url = $imageUrl;
-                $productImage->image_public_id = $publicId;
+                $productImage->image = $imageName;
                 $productImage->product_id = $product->id;
                 $productImage->save();
 
-                // Ảnh đại diện (ảnh đầu tiên)
                 if($key == 0){
-                    $product->image_url = $imageUrl;
-                    $product->image_public_id = $publicId;
+                    $product->image = $imageName;
                     $product->save();
-                }
-
-                // Xóa file local nếu muốn
-                if(file_exists($localFile)){
-                    @unlink($localFile);
                 }
             }
         }
@@ -152,6 +150,7 @@ class ProductController extends Controller
 
     public function update(Request $request, $id)
     {
+
         $product = Product::find($id);
 
         if( $product == null){
@@ -168,6 +167,7 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'compare_price' => 'nullable|numeric|min:0',
             'quantity' => 'required|integer|min:0',
+//            'image' => 'nullable|string',
             'status' => 'required|integer',
             'is_featured' => 'required|in:yes,no',
             'sku' => 'nullable|string|max:255,'.$id.',id',
@@ -195,6 +195,7 @@ class ProductController extends Controller
         $product->price = $request->price;
         $product->compare_price = $request->compare_price;
         $product->quantity = $request->quantity;
+//        $product->image = $request->image;
         $product->status = $request->status;
         $product->is_featured = $request->is_featured;
         $product->sku = $request->sku;
@@ -230,21 +231,14 @@ class ProductController extends Controller
                 'status'=>404,
             ],  404);
         }
-        // Xóa tất cả ảnh trên Cloudinary
-        if($product->product_images){
-            foreach ($product->product_images as $productImage){
-                if($productImage->image_public_id){
-                    Cloudinary::destroy($productImage->image_public_id);
-                }
-                $productImage->delete();
+        $product->delete();
+
+        if($product->product_images()){
+            foreach ($product->product_images() as $productImage){
+                \Illuminate\Support\Facades\File::delete(public_path('uploads/products/large/'.$productImage->image));
+                \Illuminate\Support\Facades\File::delete(public_path('uploads/products/small/'.$productImage->image));
             }
         }
-        // Xóa ảnh đại diện nếu có
-        if($product->image_public_id){
-            Cloudinary::destroy($product->image_public_id);
-        }
-
-        $product->delete();
 
         return response()->json([
             'message'=>'Product deleted successfully',
@@ -266,23 +260,31 @@ class ProductController extends Controller
             ], status: 403);
         }
 
+        //store image
         $image = $request->file('image');
-        $uploadedFile = Cloudinary::upload($image->getRealPath(), [
-            'folder' => 'products/'.$id,
-            'resource_type' => 'image'
-        ]);
-        $imageUrl = $uploadedFile->getSecurePath();
-        $publicId = $uploadedFile->getPublicId();
+        $imageName = $request->id.'-'.time().'.'.$image->extension();
 
+        //large thumbnail
+        $manager = new ImageManager(Driver::class);
+        $img = $manager->read($image->getPathname());
+        $img->scaleDown(1200);
+        $img->save(public_path('uploads/products/large/'.$imageName));
+
+        //small thumbnail
+        $manager = new ImageManager(Driver::class);
+        $img = $manager->read($image->getPathname());
+        $img->coverDown(500, 650);
+        $img->save(public_path('uploads/products/small/'.$imageName));
+
+        //insert a record to product_images table
         $productImage = new ProductImage();
-        $productImage->image_url = $imageUrl;
-        $productImage->image_public_id = $publicId;
-        $productImage->product_id = $id;
+        $productImage->image = $imageName;
+        $productImage->product_id = $request->id;
         $productImage->save();
 
         return response()->json([
             'data'=>$productImage,
-            'message'=>'Image uploaded to Cloudinary successfully',
+            'message'=>'Image added successfully',
             'status'=>200,
         ], status: 200);
     }
@@ -290,8 +292,7 @@ class ProductController extends Controller
     public function updateDefaultImage(Request $request)
     {
         $product = Product::find($request->product_id);
-        $product->image_url = $request->image_url;
-        $product->image_public_id = $request->image_public_id;
+        $product->image = $request->image;
         $product->save();
 
         return response()->json([
@@ -310,10 +311,9 @@ class ProductController extends Controller
                 'status'=>404,
             ],  404);
         }
-        // Xóa ảnh trên Cloudinary
-        if($productImage->image_public_id){
-            Cloudinary::destroy($productImage->image_public_id);
-        }
+        \Illuminate\Support\Facades\File::delete(public_path('uploads/products/large/'.$productImage->image));
+        \Illuminate\Support\Facades\File::delete(public_path('uploads/products/small/'.$productImage->image));
+
 
         $productImage->delete();
 
