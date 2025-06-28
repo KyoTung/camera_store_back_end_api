@@ -1,7 +1,7 @@
-# Sử dụng image Debian 12 (Bookworm) mới nhất
+# Sử dụng image chính thức PHP 8.2 Apache dựa trên Debian Bookworm
 FROM php:8.2-apache-bookworm
 
-# Cài các extension PHP cần thiết
+# Cài đặt các extension PHP cần thiết cho Laravel và các thư viện hệ thống
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libzip-dev \
     libmagickwand-dev \
+    imagemagick \
     zip \
     unzip \
     git \
@@ -29,39 +30,35 @@ RUN apt-get update && apt-get install -y \
 ENV TZ=Asia/Ho_Chi_Minh
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Cài Composer
+# Cài đặt Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
+# Thiết lập thư mục làm việc
 WORKDIR /var/www/html
 
-# Copy source code vào container
+# Copy mã nguồn (sử dụng .dockerignore để loại trừ các file không cần thiết)
 COPY . .
 
-# Cài đặt package Cloudinary cho Laravel
-RUN composer require cloudinary-labs/cloudinary-laravel
+# Cài đặt các gói Composer (bao gồm cả cloudinary) và tối ưu hóa autoloader
+RUN composer require cloudinary-labs/cloudinary-laravel --no-interaction \
+    && composer install --no-dev --optimize-autoloader
 
-# Cài đặt các package PHP
-RUN composer install --no-dev --optimize-autoloader
-
-# Phân quyền thư mục
+# Thiết lập quyền cho các thư mục cần thiết
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache public/uploads
 
-# Tạo symlink storage:link
-RUN php artisan storage:link || true
-
-# Bật rewrite module cho Apache
+# Bật mod rewrite của Apache
 RUN a2enmod rewrite
 
-# Cấu hình Apache cho Laravel
+# Copy file cấu hình virtual host
 COPY vhost.conf /etc/apache2/sites-available/000-default.conf
 
-# Copy script start.sh
+# Copy script khởi động
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
 
-# Expose port mặc định
+# Expose port 8080 (mặc định, nhưng có thể thay đổi bằng biến môi trường)
 EXPOSE 8080
 
-# Chạy start.sh
+# Sử dụng start.sh để khởi động
 CMD ["/usr/local/bin/start.sh"]
