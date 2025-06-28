@@ -1,12 +1,13 @@
 FROM php:8.2-apache
 
 # Cài các extension cần thiết cho Laravel + Imagick
+FROM php:8.2-apache
+
+# Cài các extension PHP cần thiết
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
-    libmagickwand-dev \
-    imagemagick \
     zip \
     unzip \
     git \
