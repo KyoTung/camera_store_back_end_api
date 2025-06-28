@@ -6,7 +6,12 @@ docker-compose.yml
 .env
 node_modules
 vendor
-storage/*.key
+storage/*
+!storage/app/public
+!storage/framework
+!storage/framework/cache
+!storage/framework/sessions
+!storage/framework/views
 *.sqlite
 *.md
 .DS_Store
@@ -14,3 +19,4 @@ storage/*.key
 .phpunit.result.cache
 docker-compose.*
 fly.toml
+deploy.sh

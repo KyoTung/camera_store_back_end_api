@@ -1,11 +1,12 @@
-app = "your-app-name-here"
+app = "your-app-name"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
   APP_ENV = "production"
-  # Thêm các biến môi trường khác tại đây
+  APP_DEBUG = "false"
+  LOG_CHANNEL = "stderr"
 
 [http_service]
   internal_port = 8080
@@ -13,14 +14,8 @@ app = "your-app-name-here"
   auto_stop_machines = true
   auto_start_machines = true
 
-# Cấu hình volume nếu cần lưu trữ file
-# [[mounts]]
-#   destination = "/var/www/html/storage/app/public"
-#   source = "laravel_storage"
-
-# Cấu hình health check
-[[http_service.checks]]
-  interval = "15s"
-  timeout = "2s"
-  method = "get"
-  path = "/"
+  [[http_service.checks]]
+    interval = "10s"
+    timeout = "2s"
+    method = "get"
+    path = "/"
