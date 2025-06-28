@@ -1,54 +1,68 @@
-FROM php:8.2-apache
-
-# Cài các extension cần thiết cho Laravel + Imagick
-FROM php:8.2-apache
+# Sử dụng image Debian 12 (Bookworm) để có PHP 8.2 mới nhất
+FROM php:8.2-apache-bookworm
 
 # Cài các extension PHP cần thiết
 RUN apt-get update && apt-get install -y \
     libpng-dev \
+    libjpeg-dev \
+    libwebp-dev \
     libonig-dev \
     libxml2-dev \
+    libzip-dev \
+    libmagickwand-dev \
+    imagemagick \
     zip \
     unzip \
     git \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        zip \
     && pecl install imagick \
     && docker-php-ext-enable imagick
 
-
+# Cài Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
+# Thiết lập múi giờ
+ENV TZ=Asia/Ho_Chi_Minh
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 WORKDIR /var/www/html
+
 # Copy source code vào container
 COPY . .
+
 # Cài đặt package Cloudinary cho Laravel
 RUN composer require cloudinary-labs/cloudinary-laravel
+
 # Cài đặt các package PHP
 RUN composer install --no-dev --optimize-autoloader
 
-# Đảm bảo các thư mục cần thiết tồn tại và phân quyền đúng
-RUN mkdir -p /var/www/html/public/uploads/temp \
-    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads
+# Phân quyền thư mục
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage bootstrap/cache public/uploads
 
-# Tạo symlink storage:link (nếu cần)
+# Tạo symlink storage:link
 RUN php artisan storage:link || true
 
 # Bật rewrite module cho Apache
 RUN a2enmod rewrite
 
-# Sửa DocumentRoot cho Apache về public (Laravel)
-RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf
-
-# Đảm bảo Apache lắng nghe đúng PORT env của Fly.io
-RUN sed -i "s/80/\${PORT}/g" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf
+# Cấu hình Apache
+COPY vhost.conf /etc/apache2/sites-available/000-default.conf
 
 # Expose port 8080
 EXPOSE 8080
 
-# Copy script start.sh vào container (nếu có dùng)
+# Copy script start.sh
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
 
-# Chạy start.sh làm CMD duy nhất
+# Chạy start.sh
 CMD ["/usr/local/bin/start.sh"]
