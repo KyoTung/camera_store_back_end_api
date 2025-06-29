@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
 use App\Models\TempImage;
+use App\Services\FirebaseStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Intervention\Image\ImageManager;
@@ -12,7 +12,14 @@ use Intervention\Image\Drivers\Imagick\Driver;
 
 class TempImageController extends Controller
 {
-    public  function  store(Request $request)
+    protected $firebaseStorage;
+
+    public function __construct(FirebaseStorageService $firebaseStorage)
+    {
+        $this->firebaseStorage = $firebaseStorage;
+    }
+
+    public function store(Request $request)
     {
         $validator = Validator::make($request->all(),[
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg',
@@ -22,32 +29,52 @@ class TempImageController extends Controller
             return response()->json([
                 'status'=>403,
                 'errors'=>$validator->errors(),
-            ], status: 403);
+            ], 403);
         }
 
+        // Tạo bản ghi tạm
         $tempImage = new TempImage();
-        $tempImage->name = "Image name";
-        $tempImage->save();
+        $tempImage->save(); // Lưu để có ID
 
+        // Xử lý ảnh
         $image = $request->file('image');
-        $imageName = time().'.'.$image->extension();
-        $image->move(public_path('uploads/temp'),$imageName);
+        $originalName = $image->getClientOriginalName();
+        $extension = $image->getClientOriginalExtension();
 
-        $tempImage->name = $imageName;
-        $tempImage->save();
+        // Tạo tên file với ID của tempImage
+        $imageName = 'temp/' . $tempImage->id . '.' . $extension;
 
-
-        //save image thumbnail
+        // Tạo thumbnail trong bộ nhớ
         $manager = new ImageManager(Driver::class);
-        $img = $manager->read(public_path('uploads/temp/'.$imageName));
-        $img->coverDown(600,650);
-        $img->save(public_path('uploads/temp/thumb/'.$imageName));
+        $img = $manager->read($image->getPathname());
+        $img->coverDown(600, 650);
+        $thumbnail = $img->encodeByMediaType('image/jpeg', 80);
 
+        // Upload ảnh gốc và thumbnail lên Firebase
+        $originalPath = $this->firebaseStorage->uploadFile(
+            $image->getPathname(),
+            'temp/' . $tempImage->id . '-original.' . $extension
+        );
+
+        $thumbnailPath = $this->firebaseStorage->uploadFromMemory(
+            $thumbnail,
+            'temp/' . $tempImage->id . '-thumbnail.' . $extension
+        );
+
+        // Cập nhật bản ghi tạm
+        $tempImage->name = $originalPath;
+        $tempImage->thumbnail = $thumbnailPath;
+        $tempImage->save();
 
         return response()->json([
-            'data'=>$tempImage,
-            'message'=>'Image added successfully',
-            'status'=>200,
-        ], status: 200);
+            'data' => [
+                'id' => $tempImage->id,
+                'name' => $originalPath,
+                'thumbnail' => $thumbnailPath,
+                'url' => $this->firebaseStorage->getImageUrl($thumbnailPath)
+            ],
+            'message' => 'Image added successfully',
+            'status' => 200,
+        ], 200);
     }
 }

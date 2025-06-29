@@ -1,5 +1,7 @@
 <?php
-
+putenv('TMP=' . __DIR__ . '/../storage/framework/tmp');
+putenv('TEMP=' . __DIR__ . '/../storage/framework/tmp');
+putenv('TMPDIR=' . __DIR__ . '/../storage/framework/tmp');
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 

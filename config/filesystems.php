@@ -59,6 +59,11 @@ return [
             'throw' => false,
             'report' => false,
         ],
+        'tmp' => [
+            'driver' => 'local',
+            'root' => storage_path('framework/tmp'),
+            'visibility' => 'public',
+        ],
 
     ],
 
