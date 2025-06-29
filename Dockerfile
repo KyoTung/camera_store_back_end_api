@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     git \
-    libgmp-dev \          # Cần cho Firebase SDK
+    libgmp-dev \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd gmp \
     && pecl install imagick \
     && docker-php-ext-enable imagick
@@ -35,7 +35,7 @@ RUN mkdir -p /var/www/html/public/uploads/temp \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads
 
 # Tạo symlink storage:link (nếu cần)
-RUN php artisan storage:link || true
+RUN php artisan storage:link || echo "Storage link already exists"
 
 # Bật rewrite module cho Apache
 RUN a2enmod rewrite
