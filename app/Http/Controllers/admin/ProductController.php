@@ -22,6 +22,7 @@ class ProductController extends Controller
     {
         $this->firebaseStorage = $firebaseStorage;
     }
+
     public function index()
     {
         $product = Product::orderBy('created_at', 'DESC')
@@ -98,26 +99,25 @@ class ProductController extends Controller
         $product->save();
 
         // Xử lý ảnh gallery
-        if(!empty($request->gallery)){
-            foreach ($request->gallery as $key => $tempImageId){
+        if(!empty($request->gallery)) {
+            foreach ($request->gallery as $key => $tempImageId) {
                 $tempImage = TempImage::find($tempImageId);
 
-                if($tempImage) {
-                    $image = $this->firebaseStorage->uploadImage(
-                        new \Illuminate\Http\UploadedFile(
-                            public_path('uploads/temp/'.$tempImage->name),
-                            $tempImage->name
-                        ),
-                        'products'
-                    );
+                if ($tempImage) {
+                    // Tạo đường dẫn file tạm
+                    $localFilePath = public_path('uploads/temp/' . $tempImage->name);
+
+                    // Upload file lên Firebase
+                    $firebasePath = 'products/' . Str::uuid() . '.' . pathinfo($tempImage->name, PATHINFO_EXTENSION);
+                    $this->firebaseStorage->uploadFile($localFilePath, $firebasePath);
 
                     $productImage = new ProductImage();
-                    $productImage->image = $image;
+                    $productImage->image = $firebasePath;
                     $productImage->product_id = $product->id;
                     $productImage->save();
 
-                    if($key == 0){
-                        $product->image = $image;
+                    if ($key == 0) {
+                        $product->image = $firebasePath;
                         $product->save();
                     }
                 }
@@ -242,28 +242,27 @@ class ProductController extends Controller
 
         if($validator->fails()){
             return response()->json([
-                'status'=>403,
-                'message'=>'Upload image fail',
-                'errors'=>$validator->errors(),
+                'status' => 403,
+                'message' => 'Upload image fail',
+                'errors' => $validator->errors(),
             ], 403);
         }
 
         // Upload ảnh lên Firebase
-        $imagePath = $this->firebaseStorage->uploadImage(
-            $request->file('image'),
-            'products'
-        );
+        $file = $request->file('image');
+        $firebasePath = 'products/' . Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $this->firebaseStorage->uploadFile($file->getPathname(), $firebasePath);
 
         $productImage = new ProductImage();
-        $productImage->image = $imagePath;
+        $productImage->image = $firebasePath;
         $productImage->product_id = $id;
         $productImage->save();
 
         return response()->json([
-            'data'=>$productImage,
-            'message'=>'Image added successfully',
-            'status'=>200,
-        ], 200);
+            'data' => $productImage,
+            'message' => 'Image added successfully',
+            'status' => 200,
+        ]);
     }
 
     public function deleteProductImage($id)
@@ -272,19 +271,19 @@ class ProductController extends Controller
 
         if(!$productImage){
             return response()->json([
-                'message'=>'Image not found',
-                'status'=>404,
+                'message' => 'Image not found',
+                'status' => 404,
             ], 404);
         }
 
         // Xóa ảnh từ Firebase
-        $this->firebaseStorage->deleteImage($productImage->image);
+        $this->firebaseStorage->deleteFile($productImage->image);
         $productImage->delete();
 
         return response()->json([
-            'message'=>'Product image deleted successfully',
-            'status'=>200,
-        ], 200);
+            'message' => 'Product image deleted successfully',
+            'status' => 200,
+        ]);
     }
 
     public function destroy($id)
@@ -293,22 +292,22 @@ class ProductController extends Controller
 
         if(!$product){
             return response()->json([
-                'message'=>'Product not found',
-                'data'=>[],
-                'status'=>404,
+                'message' => 'Product not found',
+                'data' => [],
+                'status' => 404,
             ], 404);
         }
 
         // Xóa tất cả ảnh liên quan
         foreach ($product->product_images as $productImage) {
-            $this->firebaseStorage->deleteImage($productImage->image);
+            $this->firebaseStorage->deleteFile($productImage->image);
         }
 
         $product->delete();
 
         return response()->json([
-            'message'=>'Product deleted successfully',
-            'status'=>200,
-        ], 200);
+            'message' => 'Product deleted successfully',
+            'status' => 200,
+        ]);
     }
 }
