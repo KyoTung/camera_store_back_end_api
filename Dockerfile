@@ -1,65 +1,54 @@
-# Sử dụng image Debian Slim làm nền tảng
-FROM debian:bookworm-slim
+FROM php:8.2-apache
 
-# Cài đặt các phụ thuộc hệ thống
+# Cài các extension cần thiết cho Laravel + Imagick + Firebase
 RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    apache2 \
-    libapache2-mod-php \
-    php \
-    php-cli \
-    php-common \
-    php-curl \
-    php-mbstring \
-    php-xml \
-    php-zip \
-    php-mysql \
-    php-gd \
-    php-bcmath \
-    php-intl \
-    php-imagick \
-    imagemagick \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
     libmagickwand-dev \
-    git \
+    imagemagick \
+    zip \
     unzip \
-    && rm -rf /var/lib/apt/lists/*
+    git \
+    libgmp-dev \          # Cần cho Firebase SDK
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd gmp \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick
 
-# Cấu hình PHP
-RUN echo "memory_limit = 512M" >> /etc/php/8.2/apache2/php.ini && \
-    echo "upload_max_filesize = 100M" >> /etc/php/8.2/apache2/php.ini && \
-    echo "post_max_size = 100M" >> /etc/php/8.2/apache2/php.ini && \
-    echo "max_execution_time = 300" >> /etc/php/8.2/apache2/php.ini
+# Cài Composer
+COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
-# Thiết lập múi giờ Việt Nam
-ENV TZ=Asia/Ho_Chi_Minh
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# Cài đặt Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Thiết lập Apache
-RUN a2enmod rewrite && \
-    a2enmod headers && \
-    rm /etc/apache2/sites-enabled/000-default.conf
-
-# Thiết lập thư mục làm việc
 WORKDIR /var/www/html
 
-# Copy mã nguồn
+# Copy source code vào container
 COPY . .
 
-# Cài đặt các gói Composer
-RUN composer require cloudinary-labs/cloudinary-laravel --no-interaction && \
-    composer install --no-dev --optimize-autoloader
+# Cài đặt package Firebase cho Laravel
+RUN composer require kreait/firebase-php
 
-# Thiết lập quyền
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 775 storage bootstrap/cache public/uploads
-COPY vhost.conf /etc/apache2/sites-available/000-default.conf
-RUN a2ensite 000-default
+# Cài đặt các package PHP
+RUN composer install --no-dev --optimize-autoloader
+
+# Đảm bảo các thư mục cần thiết tồn tại và phân quyền đúng
+RUN mkdir -p /var/www/html/public/uploads/temp \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads
+
+# Tạo symlink storage:link (nếu cần)
+RUN php artisan storage:link || true
+
+# Bật rewrite module cho Apache
+RUN a2enmod rewrite
+
+# Sửa DocumentRoot cho Apache về public (Laravel)
+RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf
+
+# Expose port 8080 (Render sử dụng PORT env)
+EXPOSE 8080
+
+# Copy script start.sh vào container
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
-# Expose port
-EXPOSE 8080
+
+# Chạy start.sh làm CMD duy nhất
 CMD ["/usr/local/bin/start.sh"]
