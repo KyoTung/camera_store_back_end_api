@@ -262,7 +262,8 @@ class ProductController extends Controller
 
         //store image
         $image = $request->file('image');
-        $imageName = $request->id.'-'.time().'.'.$image->extension();
+        $randomNumber = rand(100000, 999999);
+        $imageName = 'img_' . $randomNumber . '.' . $image->extension();
 
         //large thumbnail
         $manager = new ImageManager(Driver::class);
