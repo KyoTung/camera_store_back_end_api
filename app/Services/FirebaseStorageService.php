@@ -126,14 +126,7 @@ class FirebaseStorageService
             $filePath
         );
     }
-    public function getImageUrl(string $filePath): string
-    {
-        // Sử dụng URL có chữ ký (signed URL)
-        return $this->getSignedUrl($filePath);
 
-        // Hoặc nếu muốn URL công khai:
-        // return $this->getPublicUrl($filePath);
-    }
     /**
      * Check if a file exists
      *

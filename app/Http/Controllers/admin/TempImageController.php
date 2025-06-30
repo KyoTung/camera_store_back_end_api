@@ -71,7 +71,7 @@ class TempImageController extends Controller
                 'id' => $tempImage->id,
                 'name' => $originalPath,
                 'thumbnail' => $thumbnailPath,
-                'url' => $this->firebaseStorage->getImageUrl($thumbnailPath)
+                'url' => $this->firebaseStorage->getSignedUrl($thumbnailPath)
             ],
             'message' => 'Image added successfully',
             'status' => 200,

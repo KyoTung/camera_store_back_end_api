@@ -20,7 +20,7 @@ class ProductController extends Controller
 
     public function __construct(FirebaseStorageService $firebaseStorage)
     {
-        $this->firebaseStorage = $firebaseStorage;
+        $this->firebaseStorage = app(\App\Services\FirebaseStorageService::class);
     }
 
     public function index()

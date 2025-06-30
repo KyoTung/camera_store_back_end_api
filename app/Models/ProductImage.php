@@ -10,6 +10,6 @@ class ProductImage extends Model
 
     public function getImageUrlAttribute()
     {
-        return app(FirebaseStorageService::class)->getImageUrl($this->image);
+        return app(FirebaseStorageService::class)->getSignedUrl($this->image);
     }
 }
