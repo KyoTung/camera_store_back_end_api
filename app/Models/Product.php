@@ -9,16 +9,16 @@ class Product extends Model
     protected $appends = ['image_url'];
 
 
-    function  product_images()
-    {
-       return $this->hasMany(ProductImage::class);
-    }
-
     public function getImageUrlAttribute()
     {
-        if (!$this->image) return null;
+        if($this->image ==""){
+            return "";
+        }
+        return asset('/uploads/products/small/'.$this->image);
+    }
 
-        return app(\App\Services\FirebaseStorageService::class)
-            ->getSignedUrl($this->image);
+    function  product_images()
+    {
+        return $this->hasMany(ProductImage::class);
     }
 }
