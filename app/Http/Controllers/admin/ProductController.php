@@ -12,17 +12,9 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Imagick\Driver;
 use Intervention\Image\ImageManager;
-use App\Services\FirebaseStorageService;
 
 class ProductController extends Controller
 {
-    protected $firebaseStorage;
-
-    public function __construct(FirebaseStorageService $firebaseStorage)
-    {
-        $this->firebaseStorage = app(\App\Services\FirebaseStorageService::class);
-    }
-
     public function index()
     {
         $product = Product::orderBy('created_at', 'DESC')
@@ -98,28 +90,34 @@ class ProductController extends Controller
 
         $product->save();
 
-        // Xử lý ảnh gallery
-        if(!empty($request->gallery)) {
-            foreach ($request->gallery as $key => $tempImageId) {
+        if(!empty($request->gallery)){
+            foreach ($request->gallery as $key => $tempImageId){
                 $tempImage = TempImage::find($tempImageId);
 
-                if ($tempImage) {
-                    // Tạo đường dẫn file tạm
-                    $localFilePath = public_path('uploads/temp/' . $tempImage->name);
+                //large thumbnail
+                $extArray = explode('.',$tempImage->name);
+                $ext = end($extArray);
 
-                    // Upload file lên Firebase
-                    $firebasePath = 'products/' . Str::uuid() . '.' . pathinfo($tempImage->name, PATHINFO_EXTENSION);
-                    $this->firebaseStorage->uploadFile($localFilePath, $firebasePath);
+                $imageName = Str::uuid() . '.' . $ext;
+                $manager = new ImageManager(Driver::class);
+                $img = $manager->read(public_path('uploads/temp/'.$tempImage->name));
+                $img->scaleDown(1200);
+                $img->save(public_path('uploads/products/large/'.$imageName));
 
-                    $productImage = new ProductImage();
-                    $productImage->image = $firebasePath;
-                    $productImage->product_id = $product->id;
-                    $productImage->save();
+                //small thumbnail
+                $manager = new ImageManager(Driver::class);
+                $img = $manager->read(public_path('uploads/temp/'.$tempImage->name));
+                $img->coverDown(500, 650);
+                $img->save(public_path('uploads/products/small/'.$imageName));
 
-                    if ($key == 0) {
-                        $product->image = $firebasePath;
-                        $product->save();
-                    }
+                $productImage = new ProductImage();
+                $productImage->image = $imageName;
+                $productImage->product_id = $product->id;
+                $productImage->save();
+
+                if($key == 0){
+                    $product->image = $imageName;
+                    $product->save();
                 }
             }
         }
@@ -222,14 +220,28 @@ class ProductController extends Controller
         ], status: 200);
     }
 
-    public function updateDefaultImage(Request $request)
+    public function destroy($id)
     {
-        $product = Product::find($request->product_id);
-        $product->image = $request->image;
-        $product->save();
+        $product = Product::with('product_images')->find($id);
+
+        if( $product == null){
+            return response()->json([
+                'message'=>'Product not found',
+                'data'=>[],
+                'status'=>404,
+            ],  404);
+        }
+        $product->delete();
+
+        if($product->product_images()){
+            foreach ($product->product_images() as $productImage){
+                \Illuminate\Support\Facades\File::delete(public_path('uploads/products/large/'.$productImage->image));
+                \Illuminate\Support\Facades\File::delete(public_path('uploads/products/small/'.$productImage->image));
+            }
+        }
 
         return response()->json([
-            'message'=>'Product default image changed successfully',
+            'message'=>'Product deleted successfully',
             'status'=>200,
         ], status: 200);
     }
@@ -242,72 +254,72 @@ class ProductController extends Controller
 
         if($validator->fails()){
             return response()->json([
-                'status' => 403,
-                'message' => 'Upload image fail',
-                'errors' => $validator->errors(),
-            ], 403);
+                'status'=>403,
+                'message'=>'Upload image fail',
+                'errors'=>$validator->errors(),
+            ], status: 403);
         }
 
-        // Upload ảnh lên Firebase
-        $file = $request->file('image');
-        $firebasePath = 'products/' . Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $this->firebaseStorage->uploadFile($file->getPathname(), $firebasePath);
+        //store image
+        $image = $request->file('image');
+        $imageName = $request->id.'-'.time().'.'.$image->extension();
 
+        //large thumbnail
+        $manager = new ImageManager(Driver::class);
+        $img = $manager->read($image->getPathname());
+        $img->scaleDown(1200);
+        $img->save(public_path('uploads/products/large/'.$imageName));
+
+        //small thumbnail
+        $manager = new ImageManager(Driver::class);
+        $img = $manager->read($image->getPathname());
+        $img->coverDown(500, 650);
+        $img->save(public_path('uploads/products/small/'.$imageName));
+
+        //insert a record to product_images table
         $productImage = new ProductImage();
-        $productImage->image = $firebasePath;
-        $productImage->product_id = $id;
+        $productImage->image = $imageName;
+        $productImage->product_id = $request->id;
         $productImage->save();
 
         return response()->json([
-            'data' => $productImage,
-            'message' => 'Image added successfully',
-            'status' => 200,
-        ]);
+            'data'=>$productImage,
+            'message'=>'Image added successfully',
+            'status'=>200,
+        ], status: 200);
+    }
+
+    public function updateDefaultImage(Request $request)
+    {
+        $product = Product::find($request->product_id);
+        $product->image = $request->image;
+        $product->save();
+
+        return response()->json([
+            'message'=>'Product default image changed successfully',
+            'status'=>200,
+        ], status: 200);
     }
 
     public function deleteProductImage($id)
     {
         $productImage = ProductImage::find($id);
 
-        if(!$productImage){
+        if( $productImage == null){
             return response()->json([
-                'message' => 'Image not found',
-                'status' => 404,
-            ], 404);
+                'message'=>'Image not found',
+                'status'=>404,
+            ],  404);
         }
+        \Illuminate\Support\Facades\File::delete(public_path('uploads/products/large/'.$productImage->image));
+        \Illuminate\Support\Facades\File::delete(public_path('uploads/products/small/'.$productImage->image));
 
-        // Xóa ảnh từ Firebase
-        $this->firebaseStorage->deleteFile($productImage->image);
+
         $productImage->delete();
 
         return response()->json([
-            'message' => 'Product image deleted successfully',
-            'status' => 200,
-        ]);
-    }
-
-    public function destroy($id)
-    {
-        $product = Product::with('product_images')->find($id);
-
-        if(!$product){
-            return response()->json([
-                'message' => 'Product not found',
-                'data' => [],
-                'status' => 404,
-            ], 404);
-        }
-
-        // Xóa tất cả ảnh liên quan
-        foreach ($product->product_images as $productImage) {
-            $this->firebaseStorage->deleteFile($productImage->image);
-        }
-
-        $product->delete();
-
-        return response()->json([
-            'message' => 'Product deleted successfully',
-            'status' => 200,
-        ]);
+            'message'=>'Product image deleted successfully',
+            'status'=>200,
+        ], status: 200);
     }
 }
