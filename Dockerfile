@@ -22,33 +22,24 @@ WORKDIR /var/www/html
 
 # Copy source code vào container
 COPY . .
-
 # Cài đặt package Firebase cho Laravel
 RUN composer require kreait/firebase-php
-
 # Cài đặt các package PHP
 RUN composer install --no-dev --optimize-autoloader
-
 # Đảm bảo các thư mục cần thiết tồn tại và phân quyền đúng
 RUN mkdir -p /var/www/html/public/uploads/temp \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/uploads
-
 # Tạo symlink storage:link (nếu cần)
 RUN php artisan storage:link || echo "Storage link already exists"
-
 # Bật rewrite module cho Apache
 RUN a2enmod rewrite
-
 # Sửa DocumentRoot cho Apache về public (Laravel)
 RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf
-
 # Expose port 8080 (Render sử dụng PORT env)
 EXPOSE 8080
-
 # Copy script start.sh vào container
 COPY start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
-
 # Chạy start.sh làm CMD duy nhất
 CMD ["/usr/local/bin/start.sh"]
